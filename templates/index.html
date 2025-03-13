@@ -1,0 +1,259 @@
+{# templates/index.html #} {% extends "layout.html" %} {% block container %}
+<div class="container mt-4">
+  <div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body">
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show">
+        {{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+          aria-label="Close"
+        ></button>
+      </div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <form method="POST" id="pedidoForm">
+        {{ cliente_form.csrf_token }}
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card mb-3">
+              <div class="card-header bg-light">
+                <h4 class="mb-0">Datos del cliente</h4>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  {{ cliente_form.nombre.label(class="form-label") }} {{
+                  cliente_form.nombre(class="form-control") }} {% if
+                  cliente_form.nombre.errors %}
+                  <div class="text-danger">
+                    {% for error in cliente_form.nombre.errors %} {{ error }} {%
+                    endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+
+                <div class="mb-3">
+                  {{ cliente_form.direccion.label(class="form-label") }} {{
+                  cliente_form.direccion(class="form-control") }} {% if
+                  cliente_form.direccion.errors %}
+                  <div class="text-danger">
+                    {% for error in cliente_form.direccion.errors %} {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+
+                <div class="mb-3">
+                  {{ cliente_form.telefono.label(class="form-label") }} {{
+                  cliente_form.telefono(class="form-control") }} {% if
+                  cliente_form.telefono.errors %}
+                  <div class="text-danger">
+                    {% for error in cliente_form.telefono.errors %} {{ error }}
+                    {% endfor %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="card mb-3">
+              <div class="card-header bg-light">
+                <h4 class="mb-0">Pizza</h4>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label"
+                    >{{ pizza_form.tamano.label }}</label
+                  >
+                  <div class="btn-group w-100" role="group">
+                    {% for subfield in pizza_form.tamano %}
+                    <div class="form-check form-check-inline mb-2 me-3">
+                      {{ subfield(class="btn-check") }} {{
+                      subfield.label(class="btn btn-outline-primary") }}
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label"
+                    >{{ pizza_form.ingredientes.label }}</label
+                  >
+                  <div class="row">
+                    {% for subfield in pizza_form.ingredientes %}
+                    <div class="col-md-6 col-lg-4 mb-2">
+                      <div class="form-check">
+                        {{ subfield(class="form-check-input") }} {{
+                        subfield.label(class="form-check-label") }}
+                      </div>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  {{ pizza_form.numPizzas.label(class="form-label") }} {{
+                  pizza_form.numPizzas(class="form-control", type="number",
+                  min="1", max="100") }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-3">
+          <button
+            type="submit"
+            formaction="{{ url_for('index') }}"
+            class="btn btn-success btn-lg w-100"
+          >
+            <i class="fas fa-cart-plus"></i> Agregar
+          </button>
+        </div>
+      </form>
+
+      {% if carrito %}
+      <form
+        method="POST"
+        action="{{ url_for('finalizarPedido') }}"
+        id="formFinalizar"
+        class="mt-3"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="btn btn-primary btn-lg w-100">
+          <i class="fas fa-check-circle"></i> Finalizar pedido
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-4 border-0 shadow-sm">
+    <div
+      class="card-header bg-success text-white d-flex justify-content-between align-items-center"
+    >
+      <h3 class="mb-0">
+        <i class="fas fa-shopping-cart"></i> Orden
+      </h3>
+      {% if carrito %}
+      <form method="POST" action="{{ url_for('eliminar_carrito') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="btn btn-sm btn-danger">
+          <i class="fas fa-trash"></i> Vaciar
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if carrito %}
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Tamaño</th>
+              <th>Cantidad</th>
+              <th>Ingredientes</th>
+              <th class="text-end">Precio</th>
+              <th class="text-center">Eliminar</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set total = 0 %} {% for pizza in carrito %} {% set precio_base =
+            {'pequena': 40, 'mediana': 80, 'grande': 120}[pizza.tamano] %} {%
+            set precio_ingredientes = pizza.ingredientes|length * 10 %} {% set
+            subtotal_pizza = (precio_base + precio_ingredientes) *
+            pizza.cantidad|int %} {% set total = total + subtotal_pizza %}
+            <tr>
+              <td>
+                {% if pizza.tamano == 'pequena' %}
+                <span class="badge bg-info">Pequeña</span>
+                {% elif pizza.tamano == 'mediana' %}
+                <span class="badge bg-primary">Mediana</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Grande</span>
+                {% endif %}
+              </td>
+              <td>{{ pizza.cantidad }}</td>
+              <td>
+                {% if pizza.ingredientes %} {% for ingrediente in
+                pizza.ingredientes %}
+                <span class="badge bg-secondary me-1">{{ ingrediente }}</span>
+                {% endfor %} {% else %}
+                <em>Sin ingredientes</em>
+                {% endif %}
+              </td>
+              <td class="text-end">${{ subtotal_pizza }}</td>
+              <td class="text-center">
+                <form
+                  method="POST"
+                  action="{{ url_for('eliminar_pizza', indice=loop.index0) }}"
+                  style="display: inline"
+                >
+                  <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-danger"
+                    title="Eliminar pizza"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-info">No hay pizzas en tu orden</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-4 border-0 shadow-sm">
+    <div class="card-header bg-dark text-white">
+      <h3 class="mb-0">
+        <i class="fas fa-chart-line"></i> Total de Ventas de Hoy
+      </h3>
+    </div>
+    <div class="card-body">
+      {% if ventas_hoy %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Teléfono</th>
+              <th>Dirección</th>
+              <th class="text-end">Total Vendido</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for venta in ventas_hoy %}
+            <tr>
+              <td>{{ venta.nombre_cliente }}</td>
+              <td>{{ venta.telefono_cliente }}</td>
+              <td>{{ venta.direccion_cliente }}</td>
+              <td class="text-end">${{ venta.total_venta }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-warning">No hay ventas registradas hoy</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
