@@ -38,7 +38,6 @@ class PizzaForm(FlaskForm):
             ('pina', 'Piña'),
             ('champinones', 'Champiñones')
         ],
-        default=['jamon'],
         option_widget=widgets.CheckboxInput(),
         widget=widgets.ListWidget(prefix_label=False)
     )

@@ -138,9 +138,7 @@
     <div
       class="card-header bg-success text-white d-flex justify-content-between align-items-center"
     >
-      <h3 class="mb-0">
-        <i class="fas fa-shopping-cart"></i> Orden
-      </h3>
+      <h3 class="mb-0"><i class="fas fa-shopping-cart"></i> Orden</h3>
       {% if carrito %}
       <form method="POST" action="{{ url_for('eliminar_carrito') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -221,13 +219,29 @@
   </div>
 
   <div class="card mb-4 border-0 shadow-sm">
-    <div class="card-header bg-dark text-white">
+    <div
+      class="card-header bg-dark text-white d-flex justify-content-between align-items-center"
+    >
       <h3 class="mb-0">
-        <i class="fas fa-chart-line"></i> Total de Ventas de Hoy
+        <i class="fas fa-chart-line"></i> {{ titulo_ventas }}
       </h3>
+      <div>
+        <a
+          href="{{ url_for('index', tipo_ventas='dia') }}"
+          class="btn btn-sm btn-outline-light {% if tipo_ventas == 'dia' %}active{% endif %} me-2"
+        >
+          <i class="fas fa-calendar-day"></i> Día
+        </a>
+        <a
+          href="{{ url_for('index', tipo_ventas='mes') }}"
+          class="btn btn-sm btn-outline-light {% if tipo_ventas == 'mes' %}active{% endif %}"
+        >
+          <i class="fas fa-calendar-alt"></i> Mes
+        </a>
+      </div>
     </div>
     <div class="card-body">
-      {% if ventas_hoy %}
+      {% if ventas %}
       <div class="table-responsive">
         <table class="table table-striped">
           <thead>
@@ -235,23 +249,34 @@
               <th>Cliente</th>
               <th>Teléfono</th>
               <th>Dirección</th>
+              <th>Fecha</th>
               <th class="text-end">Total Vendido</th>
             </tr>
           </thead>
           <tbody>
-            {% for venta in ventas_hoy %}
+            {% for venta in ventas %}
             <tr>
               <td>{{ venta.nombre_cliente }}</td>
               <td>{{ venta.telefono_cliente }}</td>
               <td>{{ venta.direccion_cliente }}</td>
+              <td>{{ venta.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
               <td class="text-end">${{ venta.total_venta }}</td>
             </tr>
             {% endfor %}
           </tbody>
+          <tfoot class="table-dark">
+            <tr>
+              <td colspan="4" class="text-end fw-bold">Total:</td>
+              <td class="text-end fw-bold">${{ total_ventas }}</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       {% else %}
-      <div class="alert alert-warning">No hay ventas registradas hoy</div>
+      <div class="alert alert-warning">
+        No hay ventas registradas {% if tipo_ventas == 'mes' %}este mes{% else
+        %}hoy{% endif %}
+      </div>
       {% endif %}
     </div>
   </div>

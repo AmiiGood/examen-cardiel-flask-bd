@@ -6,7 +6,9 @@ from flask import g
 from forms import PizzaForm, ClienteForm
 from models import db
 from models import Venta, DetallePizza, IngredientePizza
-import json
+from datetime import datetime
+import calendar
+from sqlalchemy import extract
 
 app = Flask(__name__)
 app.config.from_object(DevelopmentConfig)
@@ -71,6 +73,7 @@ def page_not_found(e):
 def index():
     pizza_form = PizzaForm()
     cliente_form = ClienteForm()
+    tipo_ventas = request.args.get('tipo_ventas', 'dia')
 
     if 'cliente_data' in session:
         cliente_form.nombre.data = session['cliente_data'].get('nombre', '')
@@ -86,10 +89,6 @@ def index():
             'telefono': cliente_form.telefono.data
         }
 
-        if not pizza_form.ingredientes.data:
-            flash('Debes seleccionar al menos un ingrediente', 'danger')
-            return redirect(url_for('index'))
-
         agregarPizza(pizza_form.tamano.data, pizza_form.numPizzas.data,
                      pizza_form.ingredientes.data)
         flash('Pizza agregada al carrito', 'success')
@@ -97,18 +96,29 @@ def index():
 
     carrito = cargarCarrito()
 
-    ventas_hoy = []
-    try:
-        ventas_hoy = Venta.query.filter(db.func.date(
+    if tipo_ventas == 'mes':
+        mes_actual = datetime.now().month
+        anio_actual = datetime.now().year
+        ventas = Venta.query.filter(
+            extract('month', Venta.fecha) == mes_actual,
+            extract('year', Venta.fecha) == anio_actual
+        ).all()
+        titulo_ventas = f"Ventas del Mes ({calendar.month_name[mes_actual]} {anio_actual})"
+    else:
+        ventas = Venta.query.filter(db.func.date(
             Venta.fecha) == db.func.current_date()).all()
-    except:
-        ventas_hoy = []
+        titulo_ventas = f"Ventas del Día ({datetime.now().strftime('%d/%m/%Y')})"
+
+    total_ventas = sum(venta.total_venta for venta in ventas)
 
     return render_template('index.html',
                            pizza_form=pizza_form,
                            cliente_form=cliente_form,
                            carrito=carrito,
-                           ventas_hoy=ventas_hoy)
+                           ventas=ventas,
+                           tipo_ventas=tipo_ventas,
+                           titulo_ventas=titulo_ventas,
+                           total_ventas=total_ventas)
 
 
 @app.route('/finalizarPedido', methods=['GET', 'POST'])
@@ -188,6 +198,7 @@ def finalizarPedido():
         try:
             db.session.commit()
             vaciarCarrito()
+            session.pop('cliente_data', None)
             flash("Pedido finalizado correctamente", "success")
             return redirect(url_for('index'))
         except Exception as e:
@@ -212,6 +223,34 @@ def eliminar_carrito():
     vaciarCarrito()
     flash("Carrito vaciado correctamente", "info")
     return redirect(url_for('index'))
+
+
+@app.route('/consultar_ventas', methods=['GET'])
+def consultar_ventas():
+    tipo = request.args.get('tipo', 'dia')
+
+    if tipo == 'mes':
+        mes_actual = datetime.now().month
+        anio_actual = datetime.now().year
+        ventas = Venta.query.filter(
+            extract('month', Venta.fecha) == mes_actual,
+            extract('year', Venta.fecha) == anio_actual
+        ).all()
+        titulo = f"Ventas del Mes ({calendar.month_name[mes_actual]} {anio_actual})"
+    else:
+        ventas = Venta.query.filter(db.func.date(
+            Venta.fecha) == db.func.current_date()).all()
+        titulo = f"Ventas del Día ({datetime.now().strftime('%d/%m/%Y')})"
+
+    total_general = sum(venta.total_venta for venta in ventas)
+
+    return render_template(
+        'ventas.html',
+        ventas=ventas,
+        tipo_actual=tipo,
+        titulo=titulo,
+        total_general=total_general
+    )
 
 
 if __name__ == '__main__':
